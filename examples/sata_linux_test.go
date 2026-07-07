@@ -21,6 +21,8 @@ func TestSata(t *testing.T) {
 	require.NoError(t, err)
 	defer dev.Close()
 
+	requireCloexec(t, path)
+
 	i, err := dev.Identify()
 	require.NoError(t, err)
 	fmt.Printf("%+v\n", i)

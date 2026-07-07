@@ -20,6 +20,8 @@ func TestNVMe(t *testing.T) {
 	require.NoError(t, err)
 	defer dev.Close()
 
+	requireCloexec(t, path)
+
 	c, ns, err := dev.Identify()
 	require.NoError(t, err)
 
