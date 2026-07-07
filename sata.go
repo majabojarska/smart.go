@@ -17,8 +17,9 @@ const (
 	_SCSI_ATA_PASSTHRU_16 = 0x85
 
 	// ATA commands
-	_ATA_SMART           = 0xb0
-	_ATA_IDENTIFY_DEVICE = 0xec
+	_ATA_SMART            = 0xb0
+	_ATA_IDENTIFY_DEVICE  = 0xec
+	_ATA_CHECK_POWER_MODE = 0xe5
 
 	// ATA feature register values for SMART
 	_SMART_READ_DATA       = 0xd0
@@ -26,6 +27,29 @@ const (
 	_SMART_READ_LOG        = 0xd5
 	_SMART_RETURN_STATUS   = 0xda
 )
+
+// ATA power mode values returned by CHECK POWER MODE (0xE5) in the sector count register.
+// See ATA8-ACS / ACS-3 "CHECK POWER MODE".
+const (
+	PowerModeStandby = 0x00 // device spun down
+	PowerModeIdle    = 0x80
+	PowerModeActive  = 0xff
+)
+
+// parsePowerMode extracts the power mode byte from descriptor-format SCSI sense data.
+// It expects an ATA Status Return descriptor (code 0x09) at byte 8, with the mode in sense[13].
+func parsePowerMode(sense []byte) (byte, error) {
+	if len(sense) < 14 {
+		return 0, fmt.Errorf("sense data too short: %d bytes", len(sense))
+	}
+	if sense[0]&0x7f != 0x72 && sense[0]&0x7f != 0x73 {
+		return 0, fmt.Errorf("unexpected sense data response code %#x", sense[0])
+	}
+	if sense[8] != 0x09 {
+		return 0, fmt.Errorf("unexpected sense descriptor code %#x", sense[8])
+	}
+	return sense[13], nil
+}
 
 func checksum(data []byte) bool {
 	var sum byte

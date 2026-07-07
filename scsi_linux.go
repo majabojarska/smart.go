@@ -238,3 +238,34 @@ func scsiSendCdb(fd int, cdb []byte, respBuf []byte) error {
 	}
 	return nil
 }
+
+// scsiSendCdbSense sends a non-data CDB and returns the sense buffer bytes written by the device.
+// Unlike scsiSendCdb, CHECK CONDITION is not treated as an error because ATA PASS-THROUGH
+// commands with CK_COND return ATA output registers via sense data.
+func scsiSendCdbSense(fd int, cdb []byte) ([]byte, error) {
+	senseBuf := make([]byte, 32)
+
+	hdr := sgIoHdr{
+		interfaceId:    'S',
+		dxferDirection: _SG_DXFER_NONE,
+		timeout:        _DEFAULT_TIMEOUT,
+		cmdLen:         uint8(len(cdb)),
+		mxSbLen:        uint8(len(senseBuf)),
+		cmdp:           uintptr(unsafe.Pointer(&cdb[0])),
+		sbp:            uintptr(unsafe.Pointer(&senseBuf[0])),
+	}
+
+	if err := ioctl(uintptr(fd), _SG_IO, uintptr(unsafe.Pointer(&hdr))); err != nil {
+		return nil, err
+	}
+
+	if hdr.sbLenWr == 0 {
+		return nil, sgioError{
+			deviceStatus: uint32(hdr.status),
+			hostStatus:   uint32(hdr.hostStatus),
+			driverStatus: uint32(hdr.driverStatus),
+		}
+	}
+
+	return senseBuf[:hdr.sbLenWr], nil
+}

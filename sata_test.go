@@ -173,6 +173,48 @@ func TestIsGeneralPurposeLoggingCapable(t *testing.T) {
 	require.False(t, id.IsGeneralPurposeLoggingCapable())
 }
 
+func TestParsePowerMode(t *testing.T) {
+	t.Parallel()
+
+	sense := func(responseCode, descriptorCode, mode byte) []byte {
+		b := make([]byte, 14)
+		b[0] = responseCode
+		b[8] = descriptorCode
+		b[13] = mode
+		return b
+	}
+
+	for _, mode := range []byte{PowerModeStandby, PowerModeIdle, PowerModeActive} {
+		got, err := parsePowerMode(sense(0x72, 0x09, mode))
+		require.NoError(t, err)
+		require.Equal(t, mode, got)
+	}
+
+	// Response code 0x73 is also valid
+	got, err := parsePowerMode(sense(0x73, 0x09, PowerModeIdle))
+	require.NoError(t, err)
+	require.Equal(t, byte(PowerModeIdle), got)
+
+	// High bit of response code is masked off
+	got, err = parsePowerMode(sense(0xf2, 0x09, PowerModeActive))
+	require.NoError(t, err)
+	require.Equal(t, byte(PowerModeActive), got)
+
+	// Short buffer
+	_, err = parsePowerMode(nil)
+	require.Error(t, err)
+	_, err = parsePowerMode(make([]byte, 13))
+	require.Error(t, err)
+
+	// Invalid response code (fixed-format sense)
+	_, err = parsePowerMode(sense(0x70, 0x09, PowerModeActive))
+	require.Error(t, err)
+
+	// Invalid descriptor code
+	_, err = parsePowerMode(sense(0x72, 0x01, PowerModeActive))
+	require.Error(t, err)
+}
+
 func TestWWN(t *testing.T) {
 	t.Parallel()
 

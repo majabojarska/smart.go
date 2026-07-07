@@ -10,6 +10,10 @@ func (d *SataDevice) Close() error {
 	return ErrOSUnsupported
 }
 
+func (d *SataDevice) CheckPowerMode() (byte, error) {
+	return 0, ErrOSUnsupported
+}
+
 func (d *SataDevice) Identify() (*AtaIdentifyDevice, error) {
 	return nil, ErrOSUnsupported
 }

@@ -39,6 +39,11 @@ func TestSata(t *testing.T) {
 	require.Equal(t, uint64(512), physicalSectorSize)
 	require.Equal(t, uint64(0), logicalSectorOffset)
 
+	mode, err := dev.CheckPowerMode()
+	require.NoError(t, err)
+	fmt.Printf("power mode: %#x\n", mode)
+	require.Contains(t, []byte{smart.PowerModeStandby, smart.PowerModeIdle, smart.PowerModeActive}, mode)
+
 	page, err := dev.ReadSMARTData()
 	require.NoError(t, err)
 	fmt.Printf("%+v\n", page)

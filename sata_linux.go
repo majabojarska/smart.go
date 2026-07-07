@@ -75,6 +75,23 @@ func (d *SataDevice) Close() error {
 	return unix.Close(d.fd)
 }
 
+// CheckPowerMode issues the ATA CHECK POWER MODE (0xE5) command and returns the
+// power mode reported by the drive (see the PowerMode* constants).
+// Unlike Identify, it does not spin up a drive in Standby.
+func (d *SataDevice) CheckPowerMode() (byte, error) {
+	cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
+	cdb[1] = 0x06                   // ATA protocol: bits [4:1] = 3 (Non-data)
+	cdb[2] = 0x20                   // CK_COND = 1: return the ATA output registers via sense data; no data transfer
+	cdb[14] = _ATA_CHECK_POWER_MODE // command
+
+	sense, err := scsiSendCdbSense(d.fd, cdb[:])
+	if err != nil {
+		return 0, fmt.Errorf("scsiSendCdb ATA CHECK POWER MODE: %w", err)
+	}
+
+	return parsePowerMode(sense)
+}
+
 func (d *SataDevice) Identify() (*AtaIdentifyDevice, error) {
 	var resp AtaIdentifyDevice
 
